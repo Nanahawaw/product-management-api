@@ -1,20 +1,20 @@
-import { Request, Response } from 'express';
+import { Request, RequestHandler, Response } from 'express';
 import User from '../models/User';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin';
 
-export const register = async (
+export const register: RequestHandler = async (
   req: Request,
   res: Response
-): Promise<Response> => {
+): Promise<void> => {
   try {
     const { name, email, password } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      res.status(400).json({ message: 'User already exists' });
     }
 
     // Hash password
@@ -24,9 +24,10 @@ export const register = async (
     const user = new User({ name, email, password: hashedPassword });
     await user.save();
 
-    return res.status(201).json({ message: 'User registered successfully' });
+    res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
-    return res.status(500).json({ message: 'Server error', error });
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
