@@ -1,30 +1,58 @@
 import { Request, Response } from 'express';
-import Product from '../models/Product';
-import { AuthRequest } from '../middleware/authMiddleware';
+import { IProduct, ProductModel } from '../models/Product';
 
-export const createProduct = async (req: AuthRequest, res: Response) => {
-  const { name, price, description } = req.body;
-  const product = new Product({
+export const createProduct = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  const { name, price, description, quantity } = req.body;
+  const product = new ProductModel({
     name,
     price,
     description,
+    quantity,
   });
 
   await product.save();
   return res.status(201).json(product);
 };
 
-export const getProducts = async (req: Request, res: Response) => {
-  const products = await Product.find().populate('createdBy', 'name email');
-  return res.json(products);
+export const getProducts = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const products = await ProductModel.find();
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching products', error });
+  }
 };
 
-export const updateProduct = async (req: AuthRequest, res: Response) => {
+// Get product by ID
+export const getProductById = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const product = await ProductModel.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching product', error });
+  }
+};
+export const updateProduct = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   const { id } = req.params;
-  const { name, price, description } = req.body;
-  const product = await Product.findByIdAndUpdate(
+  const { name, price, description, quantity } = req.body;
+  const product = await ProductModel.findByIdAndUpdate(
     id,
-    { name, price, description },
+    { name, price, description, quantity },
     { new: true }
   );
 
@@ -33,9 +61,12 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
   return res.json(product);
 };
 
-export const deleteProduct = async (req: AuthRequest, res: Response) => {
+export const deleteProduct = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   const { id } = req.params;
-  const product = await Product.findByIdAndDelete(id);
+  const product = await ProductModel.findByIdAndDelete(id);
 
   if (!product) return res.status(404).json({ message: 'Product not found' });
 
