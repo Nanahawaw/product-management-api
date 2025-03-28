@@ -5,16 +5,34 @@ export const createProduct = async (
   req: Request,
   res: Response
 ): Promise<any> => {
-  const { name, price, description, quantity } = req.body;
-  const product = new ProductModel({
-    name,
-    price,
-    description,
-    quantity,
-  });
+  try {
+    const { name, price, description, quantity } = req.body;
 
-  await product.save();
-  return res.status(201).json(product);
+    // Check if a product with the same name already exists
+    const existingProduct = await ProductModel.findOne({ name });
+
+    if (existingProduct) {
+      return res.status(400).json({
+        message: 'Product name already exists',
+      });
+    }
+
+    // If no duplicate, create the new product
+    const product = new ProductModel({
+      name,
+      price,
+      description,
+      quantity,
+    });
+
+    await product.save();
+    return res.status(201).json(product);
+  } catch (error) {
+    console.error('Error creating product:', error);
+    return res.status(500).json({
+      message: 'Error creating product',
+    });
+  }
 };
 
 export const getProducts = async (

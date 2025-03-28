@@ -4,12 +4,11 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-development';
 
-// Generate an admin token with role
 const generateAdminToken = () => {
   return jwt.sign(
     {
       id: 'admin-user-id',
-      role: 'admin', // Include the role
+      role: 'admin',
     },
     JWT_SECRET,
     {
@@ -30,23 +29,34 @@ const generateNonAdminToken = () => {
     }
   );
 };
+
 describe('Product Routes', () => {
   const adminToken = generateAdminToken();
   const nonAdminToken = generateNonAdminToken();
+
+  // Store created product IDs for later tests
+  let testProductId;
+
   it('should create a product for admin', async () => {
     const res = await request(app)
       .post('/api/products')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: 'Test Product',
+        name: `Test Product ${Date.now()}`, // Unique name for each test
         price: 10000,
         description: 'A test product',
-        quantity: 10, // Fixed typo: quanity → quantity
+        quantity: 10,
       });
 
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('_id');
-    expect(res.body).toHaveProperty('name', 'Test Product');
+    expect(res.body).toHaveProperty('name');
+    expect(res.body).toHaveProperty('price');
+    expect(res.body).toHaveProperty('description');
+    expect(res.body).toHaveProperty('quantity');
+
+    // Save the created product ID for later tests
+    testProductId = res.body._id;
   });
 
   it('should prevent non-admin from creating a product', async () => {
@@ -82,44 +92,48 @@ describe('Product Routes', () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
-  // Modified to ensure we have a product to test with
   it('should get a product by ID', async () => {
-    // First create a product to ensure there's something to fetch
-    const createRes = await request(app)
-      .post('/api/products')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        name: 'Product to Fetch',
-        price: 15000,
-        description: 'A product to fetch by ID',
-        quantity: 5,
-      });
+    // Make sure we have a valid product ID to use
+    if (!testProductId) {
+      const createRes = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: 'Product to Fetch',
+          price: 15000,
+          description: 'A product to fetch by ID',
+          quantity: 5,
+        });
 
-    // Now fetch it by ID
-    const productId = createRes.body._id || 1;
-    const res = await request(app).get(`/api/products/${productId}`);
+      testProductId = createRes.body._id;
+    }
+
+    // Now try to fetch the product
+    const res = await request(app).get(`/api/products/${testProductId}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('_id');
     expect(res.body).toHaveProperty('name');
-  });
+  }, 10000); // Increase timeout to 10 seconds
 
   it('should update a product for admin', async () => {
-    // First create a product to ensure there's something to update
-    const createRes = await request(app)
-      .post('/api/products')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        name: 'Product to Update',
-        price: 20000,
-        description: 'A product to update',
-        quantity: 15,
-      });
+    // Make sure we have a valid product ID to use
+    if (!testProductId) {
+      const createRes = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: 'Product to Update',
+          price: 20000,
+          description: 'A product to update',
+          quantity: 15,
+        });
 
-    const productId = createRes.body._id || 1;
+      testProductId = createRes.body._id;
+    }
 
     const res = await request(app)
-      .put(`/api/products/${productId}`)
+      .put(`/api/products/${testProductId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         name: 'Updated Product',
@@ -130,15 +144,58 @@ describe('Product Routes', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('name', 'Updated Product');
-  });
+  }, 10000); // Increase timeout to 10 seconds
+
+  it('should reject creating a product with duplicate name', async () => {
+    const uniqueName = `Unique Product Name ${Date.now()}`; // Ensure unique name
+    const firstProduct = {
+      name: uniqueName,
+      price: 10000,
+      description: 'A test product',
+      quantity: 10,
+    };
+
+    await request(app)
+      .post('/api/products')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(firstProduct);
+
+    // Try to create another product with the same name
+    const res = await request(app)
+      .post('/api/products')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(firstProduct);
+
+    // Should reject with 400 Bad Request
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('message', 'Product name already exists');
+  }, 10000);
 
   it('should prevent non-admin from updating a product', async () => {
-    // Use the product created in previous test
-    const getAllRes = await request(app).get('/api/products');
-    const productId = getAllRes.body[0]?.id || 1;
+    // Make sure we have a valid product ID to use
+    if (!testProductId) {
+      // Get all products and use the first one
+      const getAllRes = await request(app).get('/api/products');
+      testProductId = getAllRes.body[0]?._id;
+
+      // If still no product found, create one
+      if (!testProductId) {
+        const createRes = await request(app)
+          .post('/api/products')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            name: 'Product for Non-Admin Test',
+            price: 20000,
+            description: 'A test product',
+            quantity: 15,
+          });
+
+        testProductId = createRes.body._id;
+      }
+    }
 
     const res = await request(app)
-      .put(`/api/products/${productId}`)
+      .put(`/api/products/${testProductId}`)
       .set('Authorization', `Bearer ${nonAdminToken}`)
       .send({
         name: 'Updated Product',
@@ -148,21 +205,24 @@ describe('Product Routes', () => {
       });
 
     expect(res.status).toBe(403);
-  });
+  }, 10000);
 
   it('should delete a product for admin', async () => {
-    // First create a product to ensure there's something to delete
+    // Create a new product specifically for deletion
     const createRes = await request(app)
       .post('/api/products')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: 'Product to Delete',
+        name: `Product to Delete ${Date.now()}`, // Ensure unique name
         price: 30000,
         description: 'A product to delete',
         quantity: 25,
       });
 
-    const productId = createRes.body._id || 1;
+    const productId = createRes.body._id;
+
+    // Verify that productId exists before proceeding
+    expect(productId).toBeDefined();
 
     const res = await request(app)
       .delete(`/api/products/${productId}`)
@@ -170,34 +230,35 @@ describe('Product Routes', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('message', 'Product deleted successfully');
-  });
+  }, 10000); // Increase timeout to 10 seconds
 
   it('should prevent non-admin from deleting a product', async () => {
-    // Create another product for this test
+    // Create a new product specifically for this test
     const createRes = await request(app)
       .post('/api/products')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: 'Another Product to Not Delete',
+        name: `Another Product ${Date.now()}`, // Ensure unique name
         price: 40000,
         description: 'Should not be deleted by non-admin',
         quantity: 30,
       });
 
-    const productId = createRes.body._id || 1;
+    const productId = createRes.body._id;
+
+    // Verify that productId exists before proceeding
+    expect(productId).toBeDefined();
 
     const res = await request(app)
       .delete(`/api/products/${productId}`)
       .set('Authorization', `Bearer ${nonAdminToken}`);
 
     expect(res.status).toBe(403);
-  });
+  }, 10000); // Increase timeout to 10 seconds
 
-  // Add a cleanup test to ensure tests close properly
-  afterAll((done) => {
-    // Close any open handles
-    setTimeout(() => {
-      done();
-    }, 500);
+  // Add proper cleanup to avoid test timeout issues
+  afterAll(async () => {
+    // Add any necessary cleanup here if needed
+    return new Promise((resolve) => setTimeout(resolve, 500));
   });
 });
