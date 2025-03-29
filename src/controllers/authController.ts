@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { IUser, UserModel } from '../models/User';
 import { AdminModel, IAdmin } from '../models/Admin';
+import { isValidEmail, isValidPassword } from '../utils/validator';
 
 // Register User
 export const registerUser = async (
@@ -10,6 +11,16 @@ export const registerUser = async (
   res: Response
 ): Promise<any> => {
   const { name, email, password } = req.body;
+  if (!isValidEmail(email)) {
+    return res
+      .status(400)
+      .json({ message: ` Your email ${email} is not a valid email format` });
+  }
+
+  const passwordValidation = isValidPassword(password);
+  if (!passwordValidation.valid) {
+    return res.status(400).json({ error: passwordValidation.message });
+  }
 
   try {
     const existingUser = await UserModel.findOne({ email: req.body.email });
