@@ -8,7 +8,7 @@ describe('Auth Routes', () => {
       .send({
         name: 'JDoe',
         email: `newuser_${Date.now()}@example.com`,
-        password: 'Password',
+        password: 'Password2356*#',
       });
     console.log(res.body);
 
