@@ -30,7 +30,7 @@ export const createProduct = async (
   } catch (error) {
     console.error('Error creating product:', error);
     return res.status(500).json({
-      message: 'Error creating product',
+      message: error.message,
     });
   }
 };

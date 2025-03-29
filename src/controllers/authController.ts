@@ -25,7 +25,7 @@ export const registerUser = async (
     return res.status(201).json({ message: 'User registered successfully' });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -54,7 +54,7 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
     return res.status(200).json({ token, userId: user._id });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: err.message });
   }
 };
 export const loginAdmin = async (req: Request, res: Response): Promise<any> => {
@@ -83,6 +83,6 @@ export const loginAdmin = async (req: Request, res: Response): Promise<any> => {
     return res.status(200).json({ token, id: admin._id });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: err.message });
   }
 };
