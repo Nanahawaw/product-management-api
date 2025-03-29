@@ -20,4 +20,4 @@ RUN npm run build
 EXPOSE 5000
 
 # Start the app (using built JavaScript)
-CMD ["/bin/bash", "-c", "node dist/seeders/seed.js && node dist/app.js"]
+CMD ["/bin/bash", "-c", "node dist/seeders/adminSeeder.js && node dist/app.js"]
