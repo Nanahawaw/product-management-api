@@ -31,16 +31,7 @@ const UserSchema = new Schema<IUser>(
     password: {
       type: String,
       required: [true, 'Password is required'],
-      validate: {
-        validator: function (v: string) {
-          // At least 8 characters, containing uppercase, lowercase, number, and special character
-          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
-            v
-          );
-        },
-        message: () =>
-          'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character',
-      },
+      minlength: [8, 'Password must be at least 8 characters long'],
     },
   },
   { timestamps: true }

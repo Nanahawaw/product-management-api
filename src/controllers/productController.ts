@@ -45,14 +45,12 @@ export const getProducts = async (
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    // Build query
     let query = ProductModel.find();
 
     // Filtering
     const filter: any = {};
 
-    // Add potential filters - adjust these based on your product schema
-    if (req.query.category) filter.category = req.query.category;
+    // Add potential filters
     if (req.query.minPrice)
       filter.price = { $gte: parseFloat(req.query.minPrice as string) };
     if (req.query.maxPrice) {
@@ -69,12 +67,6 @@ export const getProducts = async (
     const sortBy = (req.query.sortBy as string) || 'createdAt';
     const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
     query = query.sort({ [sortBy]: sortOrder });
-
-    // Field selection
-    if (req.query.fields) {
-      const fields = (req.query.fields as string).split(',').join(' ');
-      query = query.select(fields);
-    }
 
     // Apply pagination
     query = query.skip(skip).limit(limit);
