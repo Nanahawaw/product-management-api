@@ -40,10 +40,69 @@ export const getProducts = async (
   res: Response
 ): Promise<any> => {
   try {
-    const products = await ProductModel.find();
-    res.status(200).json(products);
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    // Build query
+    let query = ProductModel.find();
+
+    // Filtering
+    const filter: any = {};
+
+    // Add potential filters - adjust these based on your product schema
+    if (req.query.category) filter.category = req.query.category;
+    if (req.query.minPrice)
+      filter.price = { $gte: parseFloat(req.query.minPrice as string) };
+    if (req.query.maxPrice) {
+      filter.price = {
+        ...filter.price,
+        $lte: parseFloat(req.query.maxPrice as string),
+      };
+    }
+    if (req.query.inStock === 'true') filter.inStock = true;
+
+    query = query.find(filter);
+
+    // Sorting
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+    query = query.sort({ [sortBy]: sortOrder });
+
+    // Field selection
+    if (req.query.fields) {
+      const fields = (req.query.fields as string).split(',').join(' ');
+      query = query.select(fields);
+    }
+
+    // Apply pagination
+    query = query.skip(skip).limit(limit);
+
+    // Execute query
+    const products = await query.lean();
+
+    // Get total count for pagination metadata
+    const totalProducts = await ProductModel.countDocuments(filter);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    res.status(200).json({
+      products,
+      pagination: {
+        total: totalProducts,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching products', error });
+    console.error('Error fetching products:', error);
+    res.status(500).json({
+      message: 'Error fetching products',
+      error: (error as Error).message,
+    });
   }
 };
 

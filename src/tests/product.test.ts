@@ -89,7 +89,9 @@ describe('Product Routes', () => {
     const res = await request(app).get('/api/products');
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveProperty('products');
+    expect(Array.isArray(res.body.products)).toBe(true);
+    expect(res.body).toHaveProperty('pagination');
   });
 
   it('should get a product by ID', async () => {
