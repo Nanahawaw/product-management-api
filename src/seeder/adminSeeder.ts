@@ -10,7 +10,9 @@ const seedAdmin = async () => {
     await mongoose.connect(process.env.MONGO_URI as string);
     //check if the admin already exists
 
-    const existingAdmin = await AdminModel.findOne({ email: 'admin@nans.co' });
+    const existingAdmin = await AdminModel.findOne({
+      email: process.env.ADMIN_EMAIL,
+    });
     if (existingAdmin) {
       console.log('Admin already exists');
       return;
